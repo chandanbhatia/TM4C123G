@@ -1,13 +1,13 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 Author      : Chandan Bhatia
 Device      : Tiva C Series microcontroller TM4C123G
 Description : Switch will act like ON/OFF Button, Led changes its current status on press of switchand hold same 
               till switch will be pressed next time. Falling edge Interrupt has been used.Swiche is connected at 
-							PORTF4 and  Led is at PORTF3.
+	      PORTF4 and  Led is at PORTF3.
               
 */
-///////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -36,7 +36,6 @@ Description : Switch will act like ON/OFF Button, Led changes its current status
 
 
 void EnableInterrupts(void);  // Enable interrupts
-void WaitForInterrupt(void);
 void EdgeInt_Init (void);        // Function Prototypes
 
 
@@ -51,7 +50,6 @@ void GPIOPortF_Handler(void){
 int main(void){
   EdgeInt_Init();           // initialize GPIO Port F interrupt
   while(1){
-		WaitForInterrupt();
   }
 }
 
