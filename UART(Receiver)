@@ -1,0 +1,124 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+Author      : Chandan Bhatia
+Device      : Tiva C Series microcontroller TM4C123G
+Description : UART :Serial Communications, Microcontroller as Receiver         
+*/
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include "PLL.h"
+
+//Constant declarations 
+#define SYSCTL_RCGC1_R          (*((volatile unsigned long *)0x400FE104))
+#define SYSCTL_RCGC2_R          (*((volatile unsigned long *)0x400FE108))
+#define GPIO_PORTA_AFSEL_R      (*((volatile unsigned long *)0x40004420))
+#define GPIO_PORTA_DEN_R        (*((volatile unsigned long *)0x4000451C))
+#define GPIO_PORTA_AMSEL_R      (*((volatile unsigned long *)0x40004528))
+#define GPIO_PORTA_PCTL_R       (*((volatile unsigned long *)0x4000452C))
+#define UART0_DR_R              (*((volatile unsigned long *)0x4000C000))
+#define UART0_FR_R              (*((volatile unsigned long *)0x4000C018))
+#define UART0_IBRD_R            (*((volatile unsigned long *)0x4000C024))
+#define UART0_FBRD_R            (*((volatile unsigned long *)0x4000C028))
+#define UART0_LCRH_R            (*((volatile unsigned long *)0x4000C02C))
+#define UART0_CTL_R             (*((volatile unsigned long *)0x4000C030))
+#define UART_FR_TXFF            0x00000020  // UART Transmit FIFO Full
+#define UART_FR_RXFE            0x00000010  // UART Receive FIFO Empty
+#define UART_LCRH_WLEN_8        0x00000060  // 8 bit word length
+#define UART_LCRH_FEN           0x00000010  // UART Enable FIFOs
+#define UART_CTL_UARTEN         0x00000001  // UART Enable
+
+//ASCII symbols
+#define CR   0x0D
+#define LF   0x0A
+#define BS   0x08
+#define ESC  0x1B
+#define SP   0x20
+#define DEL  0x7F
+
+
+void UART_Init(void);                  //UART Initialization
+void UART_OutChar(unsigned char data); // 8-bit data be transferred
+void UART_OutString(char *pt);         // String to be transferred
+void OutCRLF(void);                    // New Lines 
+void Delay(unsigned long time);        // Delay
+unsigned char UART_InChar(void);       //  8-bit data be received
+void UART_InString(char *bufPt, unsigned short max); //String to be received
+ 
+int main(void){
+	char i_string[50];     
+  PLL_Init();               // Initialize clock at 50 MHZ
+  UART_Init();              // initialize UART
+  UART_OutString("START");
+  OutCRLF();
+  while(1){			
+		UART_OutString("Input string:");
+    UART_InString(i_string,49);
+		OutCRLF();
+    UART_OutString("Output String:"); 
+		UART_OutString(i_string); 
+		OutCRLF();
+  }
+}
+
+void UART_Init(void){
+	SYSCTL_RCGC1_R|= 0x00000001;           // activate UART0
+	SYSCTL_RCGC2_R |= 0x00000001;          // activate port A
+	UART0_CTL_R &= ~UART_CTL_UARTEN;       // disable UART
+	UART0_IBRD_R = 54;                     // for Baud rate 57600
+	UART0_FBRD_R = 16; 										 // for Baud rate 57600
+	UART0_LCRH_R = (UART_LCRH_WLEN_8|UART_LCRH_FEN);  //UART Line Control, 8 bit data length and enablE UART FIFO
+	UART0_CTL_R |= UART_CTL_UARTEN;        // enable UART
+	GPIO_PORTA_AFSEL_R |= 0x03;           // enable alt funct on PA1-0
+	GPIO_PORTA_DEN_R |= 0x03;             // enable digital I/O on PA1-0
+	GPIO_PORTA_PCTL_R = (GPIO_PORTA_PCTL_R&0xFFFFFF00)+0x00000011;  //// configure PA1-0 as UART
+  GPIO_PORTA_AMSEL_R &= ~0x03;          // disable analog functionality on PA	
+}
+
+void UART_OutChar(unsigned char data){
+  while((UART0_FR_R&UART_FR_TXFF) != 0);
+  UART0_DR_R = data;
+}
+
+void UART_OutString(char *pt){
+  while(*pt){
+    UART_OutChar(*pt);
+    pt++;
+  }
+}
+
+void OutCRLF(void){
+  UART_OutChar(CR);
+  UART_OutChar(LF);
+}
+
+void UART_InString(char *bufPt, unsigned short max) {
+int length=0;
+char character;
+  character = UART_InChar();
+  while(character != CR){    
+     if(length < max){
+      *bufPt = character;
+      bufPt++;
+      length++;
+      UART_OutChar(character);
+    }
+    character = UART_InChar();
+  }
+  *bufPt = 0;
+}
+
+unsigned char UART_InChar(void){
+  while((UART0_FR_R&UART_FR_RXFE) != 0);
+  return((unsigned char)(UART0_DR_R&0xFF));
+}
+
+void Delay(unsigned long time){
+  unsigned long i;
+  while(time > 0){
+    i = 133333;  
+    while(i > 0){
+      i = i - 1;
+    }
+    time = time - 1; 
+  }
+}
